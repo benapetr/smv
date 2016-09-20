@@ -1,0 +1,71 @@
+#!/bin/env python
+
+# SMV allows for "smart file / folder moves"
+# Copyright 2016 petr@bena.rocks
+
+# Licensed under GNU GPLv3
+
+import argparse
+import sys
+import os
+
+parser = argparse.ArgumentParser(description='SMV is a "smart move" command that allows for more advanced folder / file moves, for example preserving the file hierarchy, or matching only older folders and files')
+parser.add_argument('-r', '--recursive', action='store_true', help='move directories recursively')
+parser.add_argument('-v', '--verbose', action='store_true', help='provides more output')
+parser.add_argument('-i', '--interactive', action='store_true', help='ask in case move would overwrite some file')
+parser.add_argument('-f', '--force', action='store_true', help='ignore all errors')
+parser.add_argument('--no-preserve-hierarchy', action='store_true', help='don\'t preserve a hierarchy of files that are recursively matched, if set smv works more like classic mv')
+parser.add_argument('source', metavar='SOURCE', type=str, nargs='+', help='List of folders or files to move')
+parser.add_argument('destination', metavar='DESTINATION', type=str, help='Target into which you wish to move source')
+
+args = parser.parse_args()
+
+dir_move = os.path.isdir(args.destination)
+sanitized_destination = args.destination
+if (dir_move and not sanitized_destination.endswith("/")):
+    sanitized_destination = sanitized_destination + "/"
+
+def verbose_print(text):
+    if (not args.verbose):
+        return
+    print (text)
+
+def fatal(text):
+    print("ERROR: " + text)
+    sys.exit(1)
+
+def semi_fatal(text):
+    if (not args.force):
+        print(text)
+        sys.exit(1)
+    else:
+        verbose_print(text)
+
+def smart_move(source, destination):
+    # Check if source exists
+    if (not os.path.exists(source)):
+        semi_fatal(source + ": not found")
+        return
+    if (not args.recursive and os.path.isdir(source)):
+        semi_fatal(source + ": is a directory")
+        return
+    final_destination = destination
+    if (dir_move):
+        # Target is a directory, we need to append a target name to it
+        final_destination = destination + source
+        # Get a parent directory of target
+        parent = final_destination
+        while (not parent.endswith("/")):
+            parent = parent[:-1]
+        if (not os.path.exists(parent)):
+            # New target path doesn't exist yet, let's create it
+            os.makedirs(parent)
+    os.rename(source,final_destination)
+    verbose_print(source + " -> " + sanitized_destination)
+
+# move the sources to destination
+for source in args.source:
+    sanitized_source = source
+    if (os.path.isdir(source)):
+        sanitized_source = sanitized_source + "/"
+    smart_move(source, sanitized_destination)
