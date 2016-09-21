@@ -15,7 +15,7 @@ parser.add_argument('-v', '--verbose', action='store_true', help='provides more 
 parser.add_argument('-i', '--interactive', action='store_true', help='ask in case move would overwrite some file')
 parser.add_argument('-f', '--force', action='store_true', help='ignore all errors')
 parser.add_argument('-d', '--dry', action='store_true', help='does not do any actualy filesystem changes, only pretend to do them, useful in combination with -v to see what would happen if you run this command')
-parser.add_argument('--no-preserve-hierarchy', action='store_true', help='don\'t preserve a hierarchy of files that are recursively matched, if set smv works more like classic mv')
+parser.add_argument('-a', '--root', type=str, help='Alternative root folder, useful when you combine smv with commands like find, it allows you to specify a root from which the move takes place. For example if you tell smv to move /root/test/file to /tmp it would normally move just file to /tmp/file, but if you use alternative root folder --root /root it will move it from /root resulting in /tmp/test/file')
 parser.add_argument('source', metavar='SOURCE', type=str, nargs='+', help='List of folders or files to move')
 parser.add_argument('destination', metavar='DESTINATION', type=str, help='Target into which you wish to move source')
 
@@ -50,19 +50,22 @@ def smart_move(source, destination):
     if (os.path.isdir(source)):
         if (not args.recursive):
             semi_fatal(source + ": is a directory")
-        else:
+            return
+        #else:
             # recursive move of all items inside of the folder
-            items = os.listdir(source)
-            for i in items:
-                t = source + i
-                d = destination
-                if (os.path.isdir(t)):
-                    d = destination + i
-                    if (not i.endswith("/")):
-                       d = d + "/"
-                       t = t + "/"
-                smart_move(t, d)
-        return
+            # this is only needed with alternative root or some specific option, otherwise classic move is sufficient
+        #    if (args.root is not None):
+        #        items = os.listdir(source)
+        #        for i in items:
+        #            t = source + i
+        #            d = destination
+        #            if (os.path.isdir(t)):
+        #                d = destination + i
+        #                if (not i.endswith("/")):
+        #                   d = d + "/"
+        #                   t = t + "/"
+        #            smart_move(t, d)
+        #        return
     final_destination = destination
     if (dir_move):
         # Target is a directory, we need to append a target name to it
@@ -73,14 +76,30 @@ def smart_move(source, destination):
             parent = parent[:-1]
         if (not os.path.exists(parent)):
             # New target path doesn't exist yet, let's create it
-            os.makedirs(parent)
+            if (not args.dry):
+               os.makedirs(parent)
     if (not args.dry):
         os.rename(source,final_destination)
     verbose_print(source + " -> " + final_destination)
 
+
 # move the sources to destination
 for source in args.source:
+    # convert to absolute path
+    abspath = os.path.abspath(source)
+    if (args.root is not None):
+        if (args.root not in abspath):
+            semi_fatal("Alternative root '" + args.root + "' doesn't seem to be a part of source's path: " + abspath)
+            continue
+        else:
+            # cut the extra path from source and append it to destination
+            extra_dest = abspath[len(args.root):]
+            if (not sanitized_destination.endswith("/") and not extra_dest.startswith("/")):
+                sanitized_destination = sanitized_destination + "/"
+            sanitized_destination = sanitized_destination + extra_dest
+            if (not sanitized_destination.endswith("/")):
+                sanitized_destination = sanitized_destination + "/"
     sanitized_source = source
-    if (os.path.isdir(source)):
+    if (os.path.isdir(source) and not source.endswith("/")):
         sanitized_source = sanitized_source + "/"
     smart_move(sanitized_source, sanitized_destination)
