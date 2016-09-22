@@ -89,6 +89,7 @@ def smart_move(source, destination):
             # New target path doesn't exist yet, let's create it
             if (not args.dry):
                os.makedirs(parent)
+    final_destination = sanitize_path(final_destination)
     if (not args.dry):
         os.rename(source,final_destination)
     verbose_print(source + " -> " + final_destination)
