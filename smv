@@ -6,6 +6,7 @@
 # Licensed under GNU GPLv3
 
 import argparse
+import shutil
 import sys
 import os
 
@@ -91,7 +92,8 @@ def smart_move(source, destination):
                os.makedirs(parent)
     final_destination = sanitize_path(final_destination)
     if (not args.dry):
-        os.rename(source,final_destination)
+        #os.rename(source,final_destination)
+        shutil.move(source,final_destination)
     verbose_print(source + " -> " + final_destination)
 
 
