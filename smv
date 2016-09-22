@@ -21,10 +21,17 @@ parser.add_argument('destination', metavar='DESTINATION', type=str, help='Target
 
 args = parser.parse_args()
 
+def sanitize_dir(name):
+    if (not name.endswith("/")):
+        name = name + "/"
+    while ("//" in name):
+        name = name.replace("//", "/")
+    return name
+
 dir_move = os.path.isdir(args.destination)
 sanitized_destination = args.destination
-if (dir_move and not sanitized_destination.endswith("/")):
-    sanitized_destination = sanitized_destination + "/"
+if (dir_move):
+    sanitized_destination = sanitize_dir(args.destination)
 
 def verbose_print(text):
     if (not args.verbose):
@@ -69,7 +76,7 @@ def smart_move(source, destination):
     final_destination = destination
     if (dir_move):
         # Target is a directory, we need to append a target name to it
-        final_destination = destination + source
+        final_destination = sanitize_dir(destination + source)
         # Get a parent directory of target
         parent = final_destination
         while (not parent.endswith("/")):
@@ -96,10 +103,8 @@ for source in args.source:
             extra_dest = abspath[len(args.root):]
             if (not sanitized_destination.endswith("/") and not extra_dest.startswith("/")):
                 sanitized_destination = sanitized_destination + "/"
-            sanitized_destination = sanitized_destination + extra_dest
-            if (not sanitized_destination.endswith("/")):
-                sanitized_destination = sanitized_destination + "/"
+            sanitized_destination = sanitize_dir(sanitized_destination + extra_dest)
     sanitized_source = source
-    if (os.path.isdir(source) and not source.endswith("/")):
-        sanitized_source = sanitized_source + "/"
+    if (os.path.isdir(source)):
+        sanitized_source = sanitize_dir(sanitized_source)
     smart_move(sanitized_source, sanitized_destination)
